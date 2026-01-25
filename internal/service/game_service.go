@@ -302,8 +302,8 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 
 // DrawCard draws a card from the deck
 func (s *GameService) DrawCard(gameID, userID int) (*cards.Card, error) {
-	// Get game and players
-	g, players, currentPlayer, err := s.getGameState(gameID, userID)
+	// Get game and current player
+	g, _, currentPlayer, err := s.getGameState(gameID, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -318,11 +318,8 @@ func (s *GameService) DrawCard(gameID, userID int) (*cards.Card, error) {
 		return nil, errors.New("can only draw cards in phase 1")
 	}
 
-	// Check if must place first
-	canPlace, _, _ := s.engine.CanPlaceCard(*currentPlayer, players)
-	if canPlace {
-		return nil, errors.New("must place card before drawing")
-	}
+	// In Phase 1, players can always draw cards (if their turn continues based on +1 rule)
+	// The turn continuation logic is handled in PlaceCard, not here
 
 	// Draw card from deck
 	card, err := s.engine.DrawCard(g, currentPlayer)
