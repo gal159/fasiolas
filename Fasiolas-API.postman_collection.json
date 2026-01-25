@@ -1,0 +1,364 @@
+{
+	"info": {
+		"_postman_id": "fasiolas-card-game",
+		"name": "Fasiolas Card Game API",
+		"description": "REST API for Lithuanian card game Fasiolas with OAuth2 authentication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Get Google OAuth URL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/google",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "google"]
+						}
+					}
+				},
+				{
+					"name": "Get GitHub OAuth URL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/github",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "github"]
+						}
+					}
+				},
+				{
+					"name": "Get Discord OAuth URL",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/discord",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "discord"]
+						}
+					}
+				},
+				{
+					"name": "Get Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/auth/refresh",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "auth", "refresh"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Games",
+			"item": [
+				{
+					"name": "Create Game",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"max_players\": 4\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/games",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games"]
+						}
+					}
+				},
+				{
+					"name": "List Games",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/games?state=waiting&limit=20&offset=0",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games"],
+							"query": [
+								{
+									"key": "state",
+									"value": "waiting"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Join Game",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"room_code\": \"ABC123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/join",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "join"]
+						}
+					}
+				},
+				{
+					"name": "Get Game State",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/{{game_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "{{game_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Start Game",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/{{game_id}}/start",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "{{game_id}}", "start"]
+						}
+					}
+				},
+				{
+					"name": "Place Card",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"target_player_position\": 1\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/{{game_id}}/place",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "{{game_id}}", "place"]
+						}
+					}
+				},
+				{
+					"name": "Draw Card",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/{{game_id}}/draw",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "{{game_id}}", "draw"]
+						}
+					}
+				},
+				{
+					"name": "Call Cheat",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/games/{{game_id}}/cheat?cheater_id=2",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "games", "{{game_id}}", "cheat"],
+							"query": [
+								{
+									"key": "cheater_id",
+									"value": "2"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "External API",
+			"item": [
+				{
+					"name": "Get Card Image",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/external/card-image?suit=hearts&rank=A",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "external", "card-image"],
+							"query": [
+								{
+									"key": "suit",
+									"value": "hearts"
+								},
+								{
+									"key": "rank",
+									"value": "A"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Game Stats",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/v1/external/stats",
+							"host": ["{{base_url}}"],
+							"path": ["api", "v1", "external", "stats"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Health Check",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/health",
+					"host": ["{{base_url}}"],
+					"path": ["health"]
+				}
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8080",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "your-jwt-token-here",
+			"type": "string"
+		},
+		{
+			"key": "game_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+

@@ -1,0 +1,96 @@
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: fasiolas_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: fasiolas_game
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fasiolas_app
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=123456
+      - DB_NAME=fasiolas_game
+      - DB_SSLMODE=disable
+      # OAuth2 Configuration (Google)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-default-client-id}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-default-secret}
+      - GOOGLE_REDIRECT_URL=http://localhost:8080/api/v1/auth/google/callback
+      # OAuth2 Configuration (GitHub)
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-default-client-id}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-default-secret}
+      - GITHUB_REDIRECT_URL=http://localhost:8080/api/v1/auth/github/callback
+      # OAuth2 Configuration (Discord)
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID:-default-client-id}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET:-default-secret}
+      - DISCORD_REDIRECT_URL=http://localhost:8080/api/v1/auth/discord/callback
+      # Server
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - SERVER_ENV=development
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["./server"]
+
+  migrations:
+    image: postgres:15-alpine
+    container_name: fasiolas_migrations
+    environment:
+      PGPASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./init-db.sh:/init-db.sh
+    command: >
+      sh -c "
+      apk add --no-cache bash &&
+      chmod +x /init-db.sh &&
+      /init-db.sh
+      "
+    networks:
+      - default
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:8080
+    container_name: fasiolas_frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - app
+    environment:
+      - REACT_APP_API_URL=http://localhost:8080
+    volumes:
+      - ./frontend/src:/app/src
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+
