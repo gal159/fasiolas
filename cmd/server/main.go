@@ -149,6 +149,7 @@ func main() {
 			{
 				external.GET("/card-image", gameHandler.GetCardImage)
 				external.GET("/stats", gameHandler.GetGameStats)
+				external.GET("/trivia", gameHandler.GetTriviaQuestions)
 			}
 
 			// Admin routes (admin role required)

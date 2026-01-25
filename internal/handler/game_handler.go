@@ -381,3 +381,20 @@ func (h *GameHandler) GetGameStats(c *gin.Context) {
 
 	c.JSON(http.StatusOK, stats)
 }
+
+// GetTriviaQuestions godoc
+// @Summary Get trivia questions (external API)
+// @Tags external
+// @Param amount query int false "Number of questions" default(5)
+// @Success 200 {array} service.TriviaQuestion
+// @Router /api/v1/external/trivia [get]
+func (h *GameHandler) GetTriviaQuestions(c *gin.Context) {
+	amount, _ := strconv.Atoi(c.DefaultQuery("amount", "5"))
+	questions, err := h.extService.GetTriviaQuestions(amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, questions)
+}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FiLogOut, FiUser, FiSettings } from 'react-icons/fi';
+import { FiLogOut, FiUser, FiSettings, FiHelpCircle } from 'react-icons/fi';
 
 function Navigation({ user, onLogout }) {
   const location = useLocation();
@@ -22,6 +22,18 @@ function Navigation({ user, onLogout }) {
                 }`}
               >
                 Dashboard
+              </Link>
+
+              <Link
+                to="/trivia"
+                className={`flex items-center space-x-2 px-4 py-2 rounded transition ${
+                  location.pathname === '/trivia'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                <FiHelpCircle className="w-4 h-4" />
+                <span>Trivia</span>
               </Link>
 
               {user?.role === 'admin' && (
@@ -68,4 +80,3 @@ function Navigation({ user, onLogout }) {
 }
 
 export default Navigation;
-
