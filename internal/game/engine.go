@@ -98,28 +98,32 @@ func (e *Engine) CanPlaceCardOnTarget(currentPlayer models.GamePlayer, targetPos
 		return false
 	}
 
-	// If placing on self
-	if currentPlayer.Position == targetPosition {
-		// Can place on self only if card is +1 to current top card of own pile
-		// If there's more than 1 card, compare to the card below the top card
-		if len(currentPlayer.Cards) > 1 {
-			cardBelow := currentPlayer.Cards[len(currentPlayer.Cards)-2]
-			return currentPlayer.TopCard.IsOnePlus(cardBelow)
+	// NEW RULE: Player can place card on ANY player (self or opponent)
+	// No +1 validation required for placement
+	// The +1 rule is ONLY used to determine turn continuation
+
+	// Check if target player exists
+	for _, targetPlayer := range allPlayers {
+		if targetPlayer.Position == targetPosition {
+			// Target exists, placement is always valid
+			return true
 		}
-		// If there's only 1 card (the drawn card was just added), can't place on self
-		// (you need at least 2 cards - one existing + the drawn one)
-		// Actually, we need to reconsider: if you have 1 card and draw another,
-		// you now have 2 cards, so check if the drawn (now top) card is +1 to the original card
-		if len(currentPlayer.Cards) == 1 {
-			// Can place on self if the new card is +1 to existing card
-			return currentPlayer.TopCard.IsOnePlus(currentPlayer.Cards[0])
-		}
+	}
+
+	return false // Target player doesn't exist
+}
+
+// DoesPlacementApplyPlusOneRule checks if placing currentPlayer's top card on target follows +1 rule
+// This determines if the turn should continue (must draw again) or end
+func (e *Engine) DoesPlacementApplyPlusOneRule(currentPlayer models.GamePlayer, targetPosition int, allPlayers []models.GamePlayer) bool {
+	if currentPlayer.TopCard == nil {
 		return false
 	}
 
-	// If placing on another player - check if that specific player can receive it
+	// Find target player
 	for _, targetPlayer := range allPlayers {
 		if targetPlayer.Position == targetPosition {
+			// Check if current card is +1 from target's top card
 			if targetPlayer.TopCard != nil && currentPlayer.TopCard.IsOnePlus(*targetPlayer.TopCard) {
 				return true
 			}
@@ -269,7 +273,8 @@ func (e *Engine) PlaceCard(currentPlayer *models.GamePlayer, targetPlayer *model
 
 	// Add card to target player
 	targetPlayer.Cards = append(targetPlayer.Cards, placedCard)
-	targetPlayer.TopCard = &placedCard
+	// Point to the card in the Cards array, not a local variable!
+	targetPlayer.TopCard = &targetPlayer.Cards[len(targetPlayer.Cards)-1]
 	targetPlayer.CardCount = len(targetPlayer.Cards)
 }
 

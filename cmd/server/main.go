@@ -129,6 +129,7 @@ func main() {
 				games.POST("/:id/start", gameHandler.StartGame)
 				games.POST("/:id/place", gameHandler.PlaceCard)
 				games.POST("/:id/draw", gameHandler.DrawCard)
+				games.POST("/:id/skip", gameHandler.SkipTurn)
 				games.POST("/:id/cheat", gameHandler.CallCheat)
 			}
 

@@ -231,15 +231,30 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 		cardToPlace = currentPlayer.TopCard
 	}
 
-	// Validate that card can be placed on the specific target chosen by the player
-	if !s.engine.CanPlaceCardOnTarget(*currentPlayer, targetPosition, players) {
-		return errors.New("invalid placement: card cannot be placed on target")
-	}
-
-	// Find target player
+	// Find and validate target player exists
 	targetPlayer, err := game.GetPlayerByPosition(players, targetPosition)
 	if err != nil {
 		return err
+	}
+
+	// Check if +1 rule applies BEFORE placing (for turn continuation logic)
+	isPlacingOnSelf := currentPlayer.Position == targetPosition
+	var plusOneApplies bool
+
+	if isPlacingOnSelf {
+		// When placing on self, check if the card being placed is +1 from the PREVIOUS top card
+		// (the card that's currently second-to-top, before the drawn card was added)
+		if len(currentPlayer.Cards) >= 2 {
+			// The drawn card is already added to Cards (line 223), so Cards[len-2] is the previous top
+			previousTopCard := currentPlayer.Cards[len(currentPlayer.Cards)-2]
+			plusOneApplies = currentPlayer.TopCard.IsOnePlus(previousTopCard)
+		} else {
+			// Only one card, can't apply +1 rule
+			plusOneApplies = false
+		}
+	} else {
+		// When placing on opponent, check if card is +1 from opponent's current top card
+		plusOneApplies = s.engine.DoesPlacementApplyPlusOneRule(*currentPlayer, targetPosition, players)
 	}
 
 	// Place card
@@ -264,13 +279,15 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 	// Log action
 	s.logAction(gameID, userID, models.ActionPlaceCard, map[string]interface{}{
 		"target_position": targetPosition,
+		"plus_one_rule":   plusOneApplies,
+		"on_self":         isPlacingOnSelf,
 	}, g.Phase)
 
-	// Check if player can place again
-	canPlaceAgain, _, _ := s.engine.CanPlaceCard(*currentPlayer, players)
-
-	if !canPlaceAgain {
-		// Can't place again, end the turn and move to next player
+	// NEW RULE: Turn continuation is ONLY based on +1 rule
+	// - If +1 applies → Turn CONTINUES (must draw again)
+	// - If +1 doesn't apply → Turn ENDS
+	if !plusOneApplies {
+		// +1 rule doesn't apply → End the turn
 		nextPos := s.engine.NextPlayer(*g.CurrentPlayerPosition, len(players))
 		g.CurrentPlayerPosition = &nextPos
 
@@ -278,6 +295,7 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 			return fmt.Errorf("failed to update game: %w", err)
 		}
 	}
+	// If plusOneApplies is true, turn continues (don't change CurrentPlayerPosition)
 
 	return nil
 }
@@ -395,6 +413,60 @@ func (s *GameService) CallCheat(gameID, callerID, cheaterID int) error {
 	}, g.Phase)
 	s.logAction(gameID, cheaterID, models.ActionReceivePenalty, map[string]interface{}{
 		"penalty_cards": len(penalizedPlayers),
+	}, g.Phase)
+
+	return nil
+}
+
+// SkipTurn skips the player's turn by adding the drawn card to their pile and ending the turn
+func (s *GameService) SkipTurn(gameID, userID int) error {
+	// Get game and players
+	g, players, currentPlayer, err := s.getGameState(gameID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Check if it's player's turn
+	if g.CurrentPlayerPosition == nil || *g.CurrentPlayerPosition != currentPlayer.Position {
+		return errors.New("not your turn")
+	}
+
+	// Check if in phase 1
+	if g.Phase != 1 {
+		return errors.New("can only skip in phase 1")
+	}
+
+	// Check if there's a drawn card waiting (stored in TableCards[0])
+	if len(g.TableCards) == 0 {
+		return errors.New("no card drawn to skip")
+	}
+
+	// Get the drawn card
+	drawnCard := g.TableCards[0]
+
+	// Add the card to player's pile
+	s.engine.AddCardToPlayer(currentPlayer, drawnCard)
+
+	// Clear TableCards
+	g.TableCards = []cards.Card{}
+
+	// Update player in database
+	if err := s.playerRepo.Update(currentPlayer); err != nil {
+		return fmt.Errorf("failed to update player: %w", err)
+	}
+
+	// End turn - move to next player
+	nextPos := s.engine.NextPlayer(*g.CurrentPlayerPosition, len(players))
+	g.CurrentPlayerPosition = &nextPos
+
+	// Update game in database
+	if err := s.gameRepo.Update(g); err != nil {
+		return fmt.Errorf("failed to update game: %w", err)
+	}
+
+	// Log action
+	s.logAction(gameID, userID, models.ActionSkipTurn, map[string]interface{}{
+		"card_kept": drawnCard,
 	}, g.Phase)
 
 	return nil

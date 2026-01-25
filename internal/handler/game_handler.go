@@ -250,6 +250,34 @@ func (h *GameHandler) CallCheat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "cheat called"})
 }
 
+// SkipTurn godoc
+// @Summary Skip turn
+// @Tags games
+// @Security BearerAuth
+// @Param id path int true "Game ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/games/{id}/skip [post]
+func (h *GameHandler) SkipTurn(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	gameID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+		return
+	}
+
+	if err := h.gameService.SkipTurn(gameID, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "turn skipped"})
+}
+
 // ListGames godoc
 // @Summary List games
 // @Tags games

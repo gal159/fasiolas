@@ -351,7 +351,7 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
                 📌 Card drawn: {drawnCard.rank} {getSuitSymbol(drawnCard.suit)}
               </p>
               <p className="text-blue-200 mb-4">
-                Drag the card above to a player or click a player below to place it
+                Click a player to place the card, or keep it for yourself
               </p>
               {selectedTarget !== null && (
                 <div className="bg-green-900 rounded-lg p-3 border-2 border-green-500 mb-4">
@@ -360,6 +360,34 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
                   </p>
                 </div>
               )}
+              <div className="mt-4">
+                <button
+                  onClick={async () => {
+                    try {
+                      // Place card on yourself
+                      await axios.post(`/api/v1/games/${game.id}/place`, {
+                        target_player_position: currentPlayer.position
+                      });
+                      setDrawnCard(null);
+                      drawnCardRef.current = null;
+                      setWaitingForPlacement(false);
+                      isPlacingCardRef.current = false;
+                      setSelectedTarget(null);
+                      setError(null);
+                      onUpdate();
+                    } catch (err) {
+                      setError(err.response?.data?.error || 'Failed to place card');
+                      setTimeout(() => setError(null), 2000);
+                    }
+                  }}
+                  className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-lg font-bold text-white transition-all transform hover:scale-105 shadow-lg"
+                >
+                  ⏭️ Place on Myself
+                </button>
+                <p className="text-gray-400 text-xs mt-2">
+                  (Add card to your pile)
+                </p>
+              </div>
             </div>
           )}
         </div>
