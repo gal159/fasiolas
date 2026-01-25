@@ -15,9 +15,15 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
   const currentPlayer = players.find(p => p.user?.id === currentUser.id);
   const isYourTurn = game.current_player_position === currentPlayer?.position;
 
+  // Check if user is a spectator
+  const isSpectator = currentUser?.role === 'spectator';
+  const isPlayer = currentUser?.role === 'player' || currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === 'admin';
+
   // Debug logging
   console.log('GameBoard render - drawnCard:', drawnCard, 'waitingForPlacement:', waitingForPlacement, 'ref:', isPlacingCardRef.current);
   console.log('Current player TopCard:', currentPlayer?.top_card);
+  console.log('User role:', currentUser?.role, 'isSpectator:', isSpectator);
 
   // Helper function to convert suit name to symbol
   const getSuitSymbol = (suit) => {
@@ -52,6 +58,12 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
   };
 
   const handlePlaceCard = async (targetPosition) => {
+    // Block spectators from placing cards
+    if (isSpectator) {
+      setError('Spectators cannot play. Switch to player role to participate.');
+      return;
+    }
+
     try {
       if (!currentPlayer) return;
 
@@ -89,6 +101,15 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
     if (!drawnCard) return;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('cardType', 'drawn');
+    e.dataTransfer.setData('text/plain', 'drawn');
+  };
+
+  // Allow dragging your own top card before drawing
+  const handleTopCardDragStart = (e) => {
+    if (!isYourTurn) return;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('cardType', 'top');
+    e.dataTransfer.setData('text/plain', 'top');
   };
 
   const handleDragOver = (e) => {
@@ -97,6 +118,12 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
   };
 
   const handleDrawCard = async () => {
+    // Block spectators from drawing
+    if (isSpectator) {
+      setError('Spectators cannot play. Switch to player role to participate.');
+      return;
+    }
+
     try {
       setWaitingForPlacement(true);
       isPlacingCardRef.current = true;
@@ -119,7 +146,7 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
   };
 
   // Render a playing card component
-  const PlayingCard = ({ card, isTopCard = false, size = 'normal', clickable = false, onClick = null }) => {
+  const PlayingCard = ({ card, isTopCard = false, size = 'normal', clickable = false, onClick = null, draggable = false, onDragStart = null }) => {
     if (!card) return null;
 
     const sizeClasses = {
@@ -132,6 +159,8 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
     return (
       <div
         onClick={onClick}
+        draggable={draggable}
+        onDragStart={onDragStart}
         className={`${sizeClasses[size]} bg-white rounded-lg shadow-lg flex flex-col items-center justify-center border-2 ${isTopCard ? 'border-yellow-400 ring-2 ring-yellow-400' : 'border-gray-300'} relative ${clickable ? 'cursor-pointer hover:shadow-xl hover:scale-105 transition-all' : ''}`}
       >
         <div className={`font-bold ${getSuitColor(card.suit)}`}>
@@ -164,7 +193,7 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
     const isCurrentTurn = game.current_player_position === player.position;
     const isYou = player.user?.id === currentUser.id;
     const isClickable = isYourTurn && !isYou && waitingForPlacement && drawnCard;
-
+    const canDragTopCard = isYourTurn && isYou && currentPlayer?.top_card;
     const positionClasses = {
       bottom: 'absolute bottom-0 left-1/2 transform -translate-x-1/2',
       top: 'absolute top-0 left-1/2 transform -translate-x-1/2'
@@ -176,7 +205,11 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
         onDragOver={handleDragOver}
         onDrop={(e) => {
           e.preventDefault();
-          if (e.dataTransfer.getData('cardType') === 'drawn' && drawnCard && waitingForPlacement) {
+          const cardType = e.dataTransfer.getData('cardType') || e.dataTransfer.getData('text/plain');
+          if (cardType === 'drawn' && drawnCard && waitingForPlacement) {
+            handlePlaceCard(player.position);
+          }
+          if (cardType === 'top' && isYourTurn && !drawnCard) {
             handlePlaceCard(player.position);
           }
         }}
@@ -193,6 +226,10 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
             if (drawnCard && waitingForPlacement) {
               handlePlaceCard(player.position);
             }
+            // New: allow placing your top card (no drawn card) on any player during your turn
+            if (!drawnCard && isYourTurn && currentPlayer?.top_card) {
+              handlePlaceCard(player.position);
+            }
           }}
         >
           {/* Player Name */}
@@ -206,8 +243,20 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
           {/* Top Card Display */}
           <div className="mt-2">
             {player.top_card ? (
-              <div className="flex justify-center">
-                <PlayingCard card={player.top_card} isTopCard={true} size="normal" />
+              <div
+                className="flex justify-center"
+                draggable={canDragTopCard}
+                onDragStart={handleTopCardDragStart}
+                style={{ cursor: canDragTopCard ? 'grab' : 'default' }}
+              >
+                <PlayingCard
+                  card={player.top_card}
+                  isTopCard={true}
+                  size="normal"
+                  draggable={canDragTopCard}
+                  onDragStart={handleTopCardDragStart}
+                  clickable={canDragTopCard}
+                />
               </div>
             ) : (
               <div className="w-20 h-28 bg-gray-700 rounded-lg flex items-center justify-center text-gray-500 text-xs border-2 border-gray-600">
@@ -326,7 +375,16 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
       </div>
 
       {/* Action Panel */}
-      {currentPlayer && isYourTurn && (
+      {isSpectator && (
+        <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-6 border-2 border-purple-500 shadow-xl">
+          <h3 className="text-xl font-bold mb-4 text-center text-purple-300">👁️ Spectator Mode</h3>
+          <p className="text-center text-purple-200">
+            You are watching this game. Switch to player role to participate.
+          </p>
+        </div>
+      )}
+
+      {!isSpectator && currentPlayer && isYourTurn && (
         <div className="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-xl p-6 border-2 border-blue-500 shadow-xl">
           <h3 className="text-xl font-bold mb-4 text-center text-blue-300">🎮 Your Turn</h3>
 
@@ -394,7 +452,7 @@ function GameBoard({ game, players, currentUser, onUpdate }) {
       )}
 
       {/* Your Hand Info (if you're in the game but not your turn) */}
-      {currentPlayer && !isYourTurn && (
+      {!isSpectator && currentPlayer && !isYourTurn && (
         <div className="bg-gray-800 rounded-xl p-4 border-2 border-gray-600">
           <div className="flex items-center justify-between">
             <div>

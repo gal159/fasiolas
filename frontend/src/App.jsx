@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Game from './pages/Game';
+import AdminPanel from './pages/AdminPanel';
 import Navigation from './components/Navigation';
 import './App.css';
 
@@ -77,6 +78,10 @@ function App() {
           <Route
             path="/dashboard"
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/admin"
+            element={user ? <AdminPanel /> : <Navigate to="/login" />}
           />
           <Route
             path="/game/:id"

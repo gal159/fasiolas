@@ -134,14 +134,48 @@ func (h *GameHandler) GetGameState(c *gin.Context) {
 		return
 	}
 
-	state, err := h.gameService.GetGameState(gameID, userID)
+	// Get user role
+	userRole, _ := middleware.GetUserRole(c)
+
+	state, err := h.gameService.GetGameState(gameID, userID, userRole)
 	if err != nil {
 		fmt.Printf("[Game] ❌ GetGameState failed for game %d, user %d: %v\n", gameID, userID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("[Game] ✅ GetGameState success for game %d: %d players\n", gameID, len(state.Players))
+	fmt.Printf("[Game] ✅ GetGameState success for game %d: %d players (role: %s)\n", gameID, len(state.Players), userRole)
+	c.JSON(http.StatusOK, state)
+}
+
+// GetGameStateSpectator godoc
+// @Summary Get game state as spectator (view-only)
+// @Tags games
+// @Security BearerAuth
+// @Param id path int true "Game ID"
+// @Success 200 {object} models.GameStateResponse
+// @Router /api/v1/games/{id}/spectate [get]
+func (h *GameHandler) GetGameStateSpectator(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	gameID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+		return
+	}
+
+	state, err := h.gameService.GetGameStateForSpectator(gameID)
+	if err != nil {
+		fmt.Printf("[Game] ❌ GetGameStateSpectator failed for game %d, user %d: %v\n", gameID, userID, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Printf("[Game] ✅ GetGameStateSpectator success for game %d (viewer: %d)\n", gameID, userID)
 	c.JSON(http.StatusOK, state)
 }
 

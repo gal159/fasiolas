@@ -71,11 +71,13 @@ func main() {
 	// Initialize services
 	authService := service.NewAuthService(userRepo, cfg)
 	gameService := service.NewGameService(gameRepo, playerRepo, actionRepo, userRepo)
+	adminService := service.NewAdminService(userRepo, gameRepo, playerRepo)
 	extService := service.NewExternalAPIService(cfg.External.DeckOfCardsAPIURL)
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
 	gameHandler := handler.NewGameHandler(gameService, extService)
+	adminHandler := handler.NewAdminHandler(adminService)
 
 	// Setup Gin router
 	if cfg.Server.Env == "production" {
@@ -118,19 +120,28 @@ func main() {
 				authProtected.POST("/refresh", authHandler.RefreshToken)
 			}
 
-			// Game routes (player role required)
+			// Game routes - View for all roles (player, admin, spectator)
 			games := protected.Group("/games")
-			games.Use(middleware.RequireRole("player", "admin"))
 			{
-				games.POST("", gameHandler.CreateGame)
+				// List and view games - available to all authenticated users
 				games.GET("", gameHandler.ListGames)
-				games.POST("/join", gameHandler.JoinGame)
 				games.GET("/:id", gameHandler.GetGameState)
-				games.POST("/:id/start", gameHandler.StartGame)
-				games.POST("/:id/place", gameHandler.PlaceCard)
-				games.POST("/:id/draw", gameHandler.DrawCard)
-				games.POST("/:id/skip", gameHandler.SkipTurn)
-				games.POST("/:id/cheat", gameHandler.CallCheat)
+
+				// Spectator-only viewing endpoint
+				games.GET("/:id/spectate", gameHandler.GetGameStateSpectator)
+			}
+
+			// Game actions - Only players and admins can play
+			gameActions := protected.Group("/games")
+			gameActions.Use(middleware.RequireRole("player", "admin"))
+			{
+				gameActions.POST("", gameHandler.CreateGame)
+				gameActions.POST("/join", gameHandler.JoinGame)
+				gameActions.POST("/:id/start", gameHandler.StartGame)
+				gameActions.POST("/:id/place", gameHandler.PlaceCard)
+				gameActions.POST("/:id/draw", gameHandler.DrawCard)
+				gameActions.POST("/:id/skip", gameHandler.SkipTurn)
+				gameActions.POST("/:id/cheat", gameHandler.CallCheat)
 			}
 
 			// External API routes
@@ -138,6 +149,17 @@ func main() {
 			{
 				external.GET("/card-image", gameHandler.GetCardImage)
 				external.GET("/stats", gameHandler.GetGameStats)
+			}
+
+			// Admin routes (admin role required)
+			admin := protected.Group("/admin")
+			admin.Use(middleware.RequireRole("admin"))
+			{
+				admin.GET("/users", adminHandler.ListUsers)
+				admin.GET("/users/:id", adminHandler.GetUser)
+				admin.PUT("/users/:id/role", adminHandler.UpdateUserRole)
+				admin.DELETE("/users/:id", adminHandler.DeleteUser)
+				admin.GET("/stats", adminHandler.GetStats)
 			}
 		}
 	}

@@ -224,7 +224,7 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 		currentPlayer.TopCard = cardToPlace
 		currentPlayer.CardCount = len(currentPlayer.Cards)
 	} else {
-		// Placing from starting hand (TopCard)
+		// Placing from starting hand (TopCard) - no drawn card
 		if currentPlayer.TopCard == nil {
 			return errors.New("no card to place")
 		}
@@ -237,8 +237,18 @@ func (s *GameService) PlaceCard(gameID, userID, targetPosition int) error {
 		return err
 	}
 
-	// Check if +1 rule applies BEFORE placing (for turn continuation logic)
+	// Validate placement rules
 	isPlacingOnSelf := currentPlayer.Position == targetPosition
+
+	// When placing your top card (not a drawn card) on an opponent, +1 rule MUST apply
+	if !isPlacingDrawnCard && !isPlacingOnSelf {
+		// Check if +1 rule applies
+		if targetPlayer.TopCard == nil || !currentPlayer.TopCard.IsOnePlus(*targetPlayer.TopCard) {
+			return errors.New("can only place on opponent if card is +1 from their top card")
+		}
+	}
+
+	// Check if +1 rule applies BEFORE placing (for turn continuation logic)
 	var plusOneApplies bool
 
 	if isPlacingOnSelf {
@@ -470,7 +480,42 @@ func (s *GameService) SkipTurn(gameID, userID int) error {
 }
 
 // GetGameState retrieves full game state
-func (s *GameService) GetGameState(gameID, userID int) (*models.GameStateResponse, error) {
+func (s *GameService) GetGameState(gameID, userID int, userRole string) (*models.GameStateResponse, error) {
+	g, err := s.gameRepo.GetByID(gameID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get game: %w", err)
+	}
+	if g == nil {
+		return nil, errors.New("game not found")
+	}
+
+	players, err := s.playerRepo.GetByGame(gameID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get players: %w", err)
+	}
+
+	actions, err := s.actionRepo.GetByGame(gameID, 20)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get actions: %w", err)
+	}
+
+	// Populate user info for players
+	for i := range players {
+		user, _ := s.userRepo.GetByID(players[i].UserID)
+		players[i].User = user
+	}
+
+	return &models.GameStateResponse{
+		Game:      *g,
+		Players:   players,
+		Actions:   actions,
+		DeckCount: len(g.DeckCards),
+	}, nil
+}
+
+// GetGameStateForSpectator retrieves game state for a spectator (view-only)
+// Spectators can view any game without being a player
+func (s *GameService) GetGameStateForSpectator(gameID int) (*models.GameStateResponse, error) {
 	g, err := s.gameRepo.GetByID(gameID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get game: %w", err)
