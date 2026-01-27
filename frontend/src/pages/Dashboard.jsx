@@ -118,8 +118,14 @@ function Dashboard({ user }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-12">
         <div>
-          <h2 className="text-3xl font-bold mb-2">Games</h2>
-          <p className="text-gray-400">Welcome back, {user?.username}!</p>
+          <h2 className="text-3xl font-bold mb-2">
+            {user?.role === 'spectator' ? '👁️ Watch Games' : 'Games'}
+          </h2>
+          <p className="text-gray-400">
+            {user?.role === 'spectator'
+              ? 'Watch other players in action'
+              : `Welcome back, ${user?.username}!`}
+          </p>
         </div>
 
         <div className="flex space-x-4">
@@ -131,40 +137,44 @@ function Dashboard({ user }) {
             <span>Refresh</span>
           </button>
 
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition"
-          >
-            <FiPlus className="w-4 h-4" />
-            <span>Create Game</span>
-          </button>
+          {(user?.role === 'player' || user?.role === 'admin') && (
+            <button
+              onClick={() => setShowCreateForm(!showCreateForm)}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded transition"
+            >
+              <FiPlus className="w-4 h-4" />
+              <span>Create Game</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Join by Room Code */}
-      <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
-        <h3 className="text-xl font-semibold mb-3">Join by Room Code</h3>
-        <form onSubmit={handleJoinByCode} className="space-y-3 md:flex md:space-y-0 md:space-x-4">
-          <input
-            type="text"
-            placeholder="Enter code (e.g. ABC123)"
-            value={joinCode}
-            onChange={(e) => setJoinCode(e.target.value)}
-            className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
-            maxLength={10}
-          />
-          <button
-            type="submit"
-            disabled={joinLoading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-6 py-2 rounded font-medium transition"
-          >
-            {joinLoading ? 'Joining...' : 'Join Game'}
-          </button>
-        </form>
-        {joinError && (
-          <p className="text-red-300 text-sm mt-2">{joinError}</p>
-        )}
-      </div>
+      {/* Join by Room Code - Only show for players and admins */}
+      {(user?.role === 'player' || user?.role === 'admin') && (
+        <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
+          <h3 className="text-xl font-semibold mb-3">Join by Room Code</h3>
+          <form onSubmit={handleJoinByCode} className="space-y-3 md:flex md:space-y-0 md:space-x-4">
+            <input
+              type="text"
+              placeholder="Enter code (e.g. ABC123)"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+              maxLength={10}
+            />
+            <button
+              type="submit"
+              disabled={joinLoading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-6 py-2 rounded font-medium transition"
+            >
+              {joinLoading ? 'Joining...' : 'Join Game'}
+            </button>
+          </form>
+          {joinError && (
+            <p className="text-red-300 text-sm mt-2">{joinError}</p>
+          )}
+        </div>
+      )}
 
       {/* Create Game Form */}
       {showCreateForm && (
@@ -218,7 +228,7 @@ function Dashboard({ user }) {
           </div>
         ) : games.length > 0 ? (
           games.map(game => (
-            <GameCard key={game.id} game={game} onRefresh={fetchGames} />
+            <GameCard key={game.id} game={game} onRefresh={fetchGames} userRole={user?.role} />
           ))
         ) : (
           <div className="col-span-full text-center py-12">
