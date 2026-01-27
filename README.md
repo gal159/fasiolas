@@ -1,699 +1,443 @@
-# 🎴 Fasiolas Card Game - REST API
+# 🎴 Fasiolas Card Game
 
-A comprehensive REST API for the Lithuanian card game "Fasiolas" built with Go, featuring OAuth2 authentication, PostgreSQL database, and external API integration.
-
-## ⚡ Quick Start
-
-**Paleisti visą sistemą:**
-```powershell
-.\start-all.ps1
-```
-
-**Jei matote seną frontend versiją:**
-```powershell
-.\rebuild-frontend.ps1
-```
-
-**Po to testuokite:**
-1. Atidarykite Incognito langą (`Ctrl+Shift+N`)
-2. Eikite į `http://localhost:3000/login`
-3. Paspauskite "Google Login"
-
-📖 **Daugiau informacijos:** [GREITAS_START.md](GREITAS_START.md) | [KAIP_PALEISTI.md](KAIP_PALEISTI.md)
+A multiplayer Lithuanian card game with OAuth authentication and role-based access control.
 
 ---
 
-## 📋 Table of Contents
+## 🚀 Quick Start (5 Minutes)
 
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [Game Rules](#game-rules)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Running the Application](#running-the-application)
-- [API Documentation](#api-documentation)
-- [Database Schema](#database-schema)
-- [Authentication](#authentication)
-- [Role-Based Access Control](#role-based-access-control)
-- [External API Integration](#external-api-integration)
-- [Project Structure](#project-structure)
-- [Development](#development)
-- [Testing](#testing)
+### Prerequisites
+- Docker Desktop installed and running
+- Ports 3000, 8080, 5432 available
 
-## ✨ Features
-
-- **Full CRUD REST API** for card game management
-- **OAuth2 Authentication** with 3 providers (Google, GitHub, Discord)
-- **JWT Token-based** session management
-- **Role-Based Access Control** (Admin, Player, Spectator)
-- **PostgreSQL Database** with migrations
-- **External API Integration** (Deck of Cards API)
-- **Real-time game state** management
-- **Comprehensive game rules** implementation
-- **Action logging** and game history
-- **Docker support** for easy deployment
-
-## 🛠 Technology Stack
-
-- **Language**: Go 1.21+
-- **Web Framework**: Gin
-- **Database**: PostgreSQL 15
-- **Authentication**: OAuth2 (golang.org/x/oauth2)
-- **JWT**: golang-jwt/jwt
-- **Database Migrations**: golang-migrate
-- **External API**: Deck of Cards API
-- **Containerization**: Docker & Docker Compose
-
-## 🎮 Game Rules
-
-### Fasiolas - Two-Phase Card Game
-
-**Players**: 2-8 players using a standard 52-card deck
-
-### Phase 1: Accumulation (+1 Phase)
-
-**Goal**: Accumulate cards on other players' piles following the +1 rank rule.
-
-**Rules**:
-1. Each player starts with 1 face-up card
-2. Player with the lowest card starts
-3. **Before drawing**, must place top card if possible (+1 rank on another player)
-4. **Cannot draw** if a valid placement exists (this is cheating!)
-5. Draw 1 card when no placement is possible
-6. If drawn card fits (+1), must place it
-7. If it doesn't fit, add to own pile
-8. **Cheating penalty**: All players with >1 card give 1 card to cheater
-9. Wrong cheat accusation = lose ability to call cheats
-10. Phase ends when deck is empty
-
-### Phase 2: Trick-Taking Phase
-
-**Goal**: Get rid of all cards. Last player with cards **loses**.
-
-**Rules**:
-1. **Trump suit** = last card drawn in Phase 1 (not ♠)
-2. Player with **9♠** (nine of spades) starts
-3. **Playing cards**:
-   - Empty table: any card
-   - Same suit + higher rank, OR
-   - Trump (beats anything except spades if trump isn't spades)
-4. **Cannot play**: Take oldest card from table, add to bottom of pile, **skip turn**
-5. Round ends when all played → last player starts next round
-6. Game ends when only 1 player has cards (they lose)
-
-## 📦 Prerequisites
-
-- Go 1.21 or higher
-- PostgreSQL 15 or higher
-- Docker & Docker Compose (optional)
-- Git
-
-## 🚀 Installation
-
-### 1. Clone the repository
+### Launch Application
 
 ```bash
-git clone <repository-url>
+# Navigate to project folder
 cd cardGame
+
+# Start all services (frontend, backend, database)
+docker compose up
+
+# Wait for these messages:
+# ✓ postgres: ready
+# ✓ app: Server starting on :8080
+# ✓ frontend: webpack compiled successfully
 ```
 
-### 2. Install Go dependencies
+**Access the application:**
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8080/health
+
+---
+
+## 👤 Create First Admin User
+
+After starting the application, create an admin account:
 
 ```bash
-go mod download
+# Open new terminal and run:
+docker compose exec db psql -U postgres -d fasiolas_game -c "INSERT INTO users (email, username, role, created_at, updated_at) VALUES ('your-email@gmail.com', 'Admin', 'admin', NOW(), NOW()) ON CONFLICT DO NOTHING;"
 ```
 
-### 3. Install development tools
+Replace `your-email@gmail.com` with your actual email.
+
+---
+
+## 📋 User Roles
+
+| Role | Create Games | Join Games | Play | Watch Games | Admin Panel |
+|------|:------------:|:----------:|:----:|:-----------:|:-----------:|
+| **👨‍💼 ADMIN** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **🎮 PLAYER** | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **👁️ SPECTATOR** | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+**Default role for new users**: PLAYER
+
+---
+
+## 🎮 How to Play
+
+### 1. Login
+- Visit http://localhost:3000
+- Click "Google Login" (or GitHub/Discord)
+- Authorize the application
+
+### 2. Create Game (Players & Admins)
+- Click **"Create Game"** button
+- Select number of players (2-8)
+- Click **"Create"**
+- Share room code with friends
+
+### 3. Join Game (Players & Admins)
+- Enter room code in **"Join by Room Code"** section
+- Click **"Join Game"**
+- Wait for other players
+
+### 4. Start Game
+- When 2+ players joined, click **"START GAME"**
+- Game begins!
+
+### 5. Gameplay
+- **Phase 1**: Place cards on other players (+1 rank rule)
+- **Phase 2**: Get rid of all your cards
+- **Last player with cards loses**
+
+### 6. Watch Game (All Roles)
+- Spectators see **"Watch"** button (purple)
+- Players/Admins see **"Join"** button (blue)
+- Click to view game in real-time
+
+---
+
+## 🛠️ Common Commands
 
 ```bash
-# Install golang-migrate for database migrations
-go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+# Start application (normal startup after restart)
+docker compose up
 
-# Install swag for API documentation generation
-go install github.com/swaggo/swag/cmd/swag@latest
-```
+# Start with rebuild (after code changes)
+docker compose up --build
 
-### 4. Setup PostgreSQL
+# Stop application
+docker compose down
 
-#### Option A: Using Docker
-
-```bash
-docker-compose up -d postgres
-```
-
-#### Option B: Local PostgreSQL
-
-Create a database:
-```sql
-CREATE DATABASE fasiolas_game;
-```
-
-### 5. Run database migrations
-
-```bash
-# Using Makefile
-make migrate-up
-
-# Or directly
-migrate -path migrations -database "postgresql://postgres:postgres@localhost:5432/fasiolas_game?sslmode=disable" up
-```
-
-## ⚙️ Configuration
-
-### 1. Create environment file
-
-```bash
-cp .env.example .env
-```
-
-### 2. Configure OAuth2 providers
-
-Edit `.env` and add your OAuth credentials:
-
-#### Google OAuth2
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a project and enable Google+ API
-3. Create OAuth 2.0 credentials
-4. Add authorized redirect URI: `http://localhost:8080/api/v1/auth/google/callback`
-5. Copy Client ID and Client Secret to `.env`
-
-#### GitHub OAuth2
-1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
-2. Create a new OAuth App
-3. Set Authorization callback URL: `http://localhost:8080/api/v1/auth/github/callback`
-4. Copy Client ID and Client Secret to `.env`
-
-#### Discord OAuth2
-1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
-2. Create a new application
-3. Add redirect URI in OAuth2 settings: `http://localhost:8080/api/v1/auth/discord/callback`
-4. Copy Client ID and Client Secret to `.env`
-
-### 3. Configure JWT Secret
-
-```env
-JWT_SECRET=your-very-secure-random-secret-key-here
-```
-
-**Generate a secure secret:**
-```bash
-openssl rand -base64 32
-```
-
-## 🏃 Running the Application
-
-### Option 1: Using Go directly
-
-```bash
-# Run the server
-go run cmd/server/main.go
-
-# Or build and run
-make build
-./bin/server
-```
-
-### Option 2: Using Docker Compose
-
-```bash
-# Start all services (PostgreSQL + App)
-docker-compose up -d
+# Stop and remove volumes (fresh start)
+docker compose down -v
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
-# Stop services
-docker-compose down
+# View specific service logs
+docker compose logs -f app
+docker compose logs -f frontend
+docker compose logs -f db
 ```
 
-### Option 3: Using Makefile
+---
+
+## 🔧 Database Commands
 
 ```bash
-# Run application
-make run
+# Access database shell
+docker compose exec db psql -U postgres -d fasiolas_game
 
-# Build binary
-make build
+# List all users
+docker compose exec db psql -U postgres -d fasiolas_game -c "SELECT id, username, email, role FROM users;"
 
-# Run tests
-make test
+# Change user role
+docker compose exec db psql -U postgres -d fasiolas_game -c "UPDATE users SET role='admin' WHERE email='user@example.com';"
 
-# Generate Swagger docs
-make swagger
+# Delete user
+docker compose exec db psql -U postgres -d fasiolas_game -c "DELETE FROM users WHERE email='user@example.com';"
 ```
 
-The server will start on `http://localhost:8080`
+---
 
-## 📚 API Documentation
+## 👨‍💼 Admin Panel
 
-### Base URL
-```
-http://localhost:8080/api/v1
-```
+**Access**: http://localhost:3000/admin (admin role required)
 
-### Authentication Endpoints
+### Features:
+- View all registered users
+- Change user roles (ADMIN/PLAYER/SPECTATOR)
+- Delete users (cannot delete yourself)
+- View system statistics
+- Monitor user count by role
 
-#### Get OAuth URL
-```http
-GET /api/v1/auth/{provider}
-```
-Providers: `google`, `github`, `discord`
+### How to Use:
+1. Login as admin
+2. Click "Admin Panel" in navigation
+3. See user list with roles
+4. Click role dropdown to change
+5. Click "Delete" to remove user
 
-**Response:**
-```json
-{
-  "url": "https://accounts.google.com/o/oauth2/auth?..."
-}
-```
+---
 
-#### OAuth Callback
-```http
-GET /api/v1/auth/{provider}/callback?code={code}&state={state}
-```
-
-**Response:**
-```json
-{
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "username": "John Doe",
-    "role": "player"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-#### Get Profile
-```http
-GET /api/v1/auth/profile
-Authorization: Bearer {token}
-```
-
-#### Refresh Token
-```http
-POST /api/v1/auth/refresh
-Authorization: Bearer {token}
-```
-
-### Game Endpoints
-
-All game endpoints require authentication and player/admin role.
-
-#### Create Game
-```http
-POST /api/v1/games
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "max_players": 4
-}
-```
-
-#### Join Game
-```http
-POST /api/v1/games/join
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "room_code": "ABC123"
-}
-```
-
-#### Start Game
-```http
-POST /api/v1/games/{id}/start
-Authorization: Bearer {token}
-```
-
-#### Get Game State
-```http
-GET /api/v1/games/{id}
-Authorization: Bearer {token}
-```
-
-**Response:**
-```json
-{
-  "game": {
-    "id": 1,
-    "room_code": "ABC123",
-    "state": "phase1",
-    "phase": 1,
-    "current_player_position": 0,
-    "deck_cards": [...],
-    "table_cards": []
-  },
-  "players": [
-    {
-      "id": 1,
-      "position": 0,
-      "card_count": 3,
-      "top_card": {"suit": "hearts", "rank": "A", "value": 14},
-      "user": {"username": "Player 1"}
-    }
-  ],
-  "recent_actions": [...]
-}
-```
-
-#### Place Card
-```http
-POST /api/v1/games/{id}/place
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "target_player_position": 1
-}
-```
-
-#### Draw Card
-```http
-POST /api/v1/games/{id}/draw
-Authorization: Bearer {token}
-```
-
-#### Call Cheat
-```http
-POST /api/v1/games/{id}/cheat?cheater_id=2
-Authorization: Bearer {token}
-```
-
-#### List Games
-```http
-GET /api/v1/games?state=waiting&limit=20&offset=0
-Authorization: Bearer {token}
-```
-
-### External API Endpoints
-
-#### Get Card Image
-```http
-GET /api/v1/external/card-image?suit=hearts&rank=A
-Authorization: Bearer {token}
-```
-
-#### Get Game Statistics
-```http
-GET /api/v1/external/stats
-Authorization: Bearer {token}
-```
-
-## 🗄️ Database Schema
-
-### Users Table
-```sql
-- id: SERIAL PRIMARY KEY
-- email: VARCHAR(255) UNIQUE NOT NULL
-- username: VARCHAR(100) UNIQUE NOT NULL
-- oauth_provider: VARCHAR(50) NOT NULL
-- oauth_id: VARCHAR(255) NOT NULL
-- role: VARCHAR(20) NOT NULL (admin, player, spectator)
-- avatar_url: VARCHAR(500)
-- created_at: TIMESTAMP
-- updated_at: TIMESTAMP
-- last_login: TIMESTAMP
-```
-
-### Games Table
-```sql
-- id: SERIAL PRIMARY KEY
-- room_code: VARCHAR(10) UNIQUE NOT NULL
-- state: VARCHAR(20) (waiting, phase1, phase2, finished, cancelled)
-- phase: INTEGER (1, 2)
-- current_player_position: INTEGER
-- trump_suit: VARCHAR(10)
-- deck_cards: JSONB
-- table_cards: JSONB
-- created_by: INTEGER REFERENCES users(id)
-- max_players: INTEGER
-- created_at, updated_at, started_at, finished_at: TIMESTAMP
-- winner_id: INTEGER REFERENCES users(id)
-```
-
-### Game Players Table
-```sql
-- id: SERIAL PRIMARY KEY
-- game_id: INTEGER REFERENCES games(id)
-- user_id: INTEGER REFERENCES users(id)
-- position: INTEGER
-- cards: JSONB
-- top_card: JSONB
-- card_count: INTEGER
-- status: VARCHAR(20) (active, eliminated, winner, left)
-- can_call_cheat: BOOLEAN
-- joined_at: TIMESTAMP
-```
-
-### Game Actions Table
-```sql
-- id: SERIAL PRIMARY KEY
-- game_id: INTEGER REFERENCES games(id)
-- user_id: INTEGER REFERENCES users(id)
-- action_type: VARCHAR(50)
-- action_data: JSONB
-- phase: INTEGER
-- timestamp: TIMESTAMP
-```
-
-## 🔐 Authentication
-
-### OAuth2 Flow
-
-1. Client requests auth URL for provider
-2. User is redirected to OAuth provider
-3. User authorizes the application
-4. Provider redirects back with authorization code
-5. Server exchanges code for access token
-6. Server retrieves user info from provider
-7. Server creates/updates user in database
-8. Server generates JWT token
-9. Client uses JWT for subsequent requests
-
-### JWT Token Structure
-
-```json
-{
-  "user_id": 1,
-  "email": "user@example.com",
-  "username": "John Doe",
-  "role": "player",
-  "exp": 1234567890,
-  "iat": 1234567890
-}
-```
-
-### Using JWT Tokens
-
-Include the token in the Authorization header:
-```
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-## 👥 Role-Based Access Control
-
-### Roles
-
-1. **Admin** (`admin`)
-   - Full access to all endpoints
-   - Can manage all games
-   - Can delete games
-   - Can modify user roles
-
-2. **Player** (`player`)
-   - Can create and join games
-   - Can play in games
-   - Can view game state
-   - Default role for new users
-
-3. **Spectator** (`spectator`)
-   - Can view games
-   - Cannot create or join games
-   - Read-only access
-
-### Role Middleware
-
-Protected endpoints automatically check user roles:
-```go
-games.Use(middleware.RequireRole("player", "admin"))
-```
-
-## 🌐 External API Integration
-
-### Deck of Cards API
-
-The application integrates with the [Deck of Cards API](https://deckofcardsapi.com/) to provide:
-
-- Card image URLs
-- SVG/PNG card representations
-- Deck shuffling (alternative implementation)
-
-**Example Usage:**
-```bash
-curl -H "Authorization: Bearer {token}" \
-  "http://localhost:8080/api/v1/external/card-image?suit=hearts&rank=A"
-```
-
-**Response:**
-```json
-{
-  "code": "AH",
-  "image": "https://deckofcardsapi.com/static/img/AH.png",
-  "images": {
-    "svg": "https://deckofcardsapi.com/static/img/AH.svg",
-    "png": "https://deckofcardsapi.com/static/img/AH.png"
-  },
-  "value": "ACE",
-  "suit": "HEARTS"
-}
-```
-
-## 📁 Project Structure
+## 🎯 Project Structure
 
 ```
 cardGame/
-├── cmd/
-│   └── server/
-│       └── main.go              # Application entry point
-├── internal/
-│   ├── config/
-│   │   └── config.go            # Configuration management
-│   ├── models/
-│   │   └── models.go            # Data models
-│   ├── repository/
-│   │   ├── db.go                # Database connection
-│   │   ├── user_repository.go
-│   │   ├── game_repository.go
-│   │   ├── game_player_repository.go
-│   │   └── game_action_repository.go
-│   ├── service/
-│   │   ├── auth_service.go      # OAuth2 & JWT logic
-│   │   ├── game_service.go      # Game business logic
-│   │   └── external_api_service.go
+├── frontend/                    # React application
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── Dashboard.jsx   # Game lobby (role-aware)
+│   │   │   ├── Game.jsx        # Game page (spectator mode)
+│   │   │   ├── AdminPanel.jsx  # User management
+│   │   │   └── Login.jsx       # OAuth login
+│   │   ├── components/
+│   │   │   ├── GameCard.jsx    # Game card (watch/join)
+│   │   │   ├── GameBoard.jsx   # Game board
+│   │   │   └── Navigation.jsx  # Top nav bar
+│   │   └── App.jsx
+│   └── package.json
+│
+├── internal/                    # Go backend
 │   ├── handler/
-│   │   ├── auth_handler.go      # HTTP handlers for auth
-│   │   └── game_handler.go      # HTTP handlers for games
+│   │   ├── auth_handler.go     # OAuth & JWT
+│   │   ├── game_handler.go     # Game logic
+│   │   └── admin_handler.go    # Admin endpoints
+│   ├── service/
+│   │   ├── auth_service.go
+│   │   ├── game_service.go
+│   │   └── admin_service.go
 │   ├── middleware/
-│   │   └── middleware.go        # Auth, RBAC, CORS middleware
-│   └── game/
-│       └── engine.go            # Core game rules engine
-├── pkg/
-│   ├── cards/
-│   │   └── cards.go             # Card deck implementation
-│   └── utils/
-│       └── utils.go             # Utility functions
-├── migrations/
-│   ├── 000001_create_users_table.up.sql
-│   ├── 000002_create_games_table.up.sql
-│   ├── 000003_create_game_players_table.up.sql
-│   └── 000004_create_game_actions_table.up.sql
-├── .env.example                 # Environment variables template
-├── .gitignore
-├── docker-compose.yml           # Docker Compose configuration
-├── Dockerfile                   # Docker image definition
-├── Makefile                     # Build automation
-├── go.mod                       # Go module dependencies
-├── go.sum
-└── README.md                    # This file
+│   │   └── middleware.go       # Role-based access
+│   ├── models/
+│   │   └── models.go           # User, Game, Player
+│   └── repository/
+│       └── repository.go       # Database queries
+│
+├── migrations/                  # Database migrations
+├── docker-compose.yml          # Service orchestration
+├── Dockerfile                  # Backend container
+└── README.md                   # This file
 ```
 
-## 🧪 Testing
+---
 
-### Run Unit Tests
-```bash
-make test
-```
+## 🔐 Security Features
 
-### Manual API Testing
+- ✅ OAuth 2.0 authentication (Google, GitHub, Discord)
+- ✅ JWT token-based sessions
+- ✅ Role-based access control (RBAC)
+- ✅ Protected API endpoints
+- ✅ Admin cannot delete own account
+- ✅ Spectators cannot modify games
+- ✅ CORS configured
+- ✅ Input validation
 
-Use tools like:
-- **Postman**: Import API endpoints
-- **curl**: Command-line testing
-- **Insomnia**: REST client
-
-### Example Test Flow
-
-1. **Get OAuth URL**
-```bash
-curl http://localhost:8080/api/v1/auth/google
-```
-
-2. **Complete OAuth flow in browser**
-
-3. **Use returned token**
-```bash
-TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-# Get profile
-curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:8080/api/v1/auth/profile
-
-# Create game
-curl -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"max_players": 4}' \
-  http://localhost:8080/api/v1/games
-```
+---
 
 ## 🐛 Troubleshooting
 
-### Database Connection Issues
+### Services won't start
 ```bash
-# Check if PostgreSQL is running
-docker-compose ps
-
-# View PostgreSQL logs
-docker-compose logs postgres
-
-# Recreate database
-docker-compose down -v
-docker-compose up -d postgres
-make migrate-up
-```
-
-### OAuth Issues
-- Verify OAuth credentials in `.env`
-- Check redirect URLs match exactly
-- Ensure OAuth apps are enabled in provider consoles
-
-### Port Already in Use
-```bash
-# Change port in .env
-PORT=8081
-
-# Or kill process using port 8080 (Windows)
+# Check if ports are available
+netstat -ano | findstr :3000
 netstat -ano | findstr :8080
-taskkill /PID <PID> /F
+netstat -ano | findstr :5432
+
+# Restart Docker Desktop
+# Then: docker compose down -v
+# Then: docker compose up --build
 ```
 
-## 📝 License
+### Can't login with OAuth
+- Check `.env` files have correct OAuth credentials
+- Verify redirect URLs in OAuth provider settings
+- Check browser console for errors
+- Ensure backend is running on port 8080
 
-This project is licensed under the MIT License.
+### Database connection errors
+```bash
+# Full reset
+docker compose down -v
+docker compose up
+```
 
-## 👤 Author
+### Frontend shows blank page
+```bash
+# Clear browser cache (Ctrl+Shift+Delete)
+# Hard refresh (Ctrl+Shift+R)
+# Or rebuild: docker compose up --build
+```
 
-Created as a final project for Server-Side Web Development course.
+### "Invalid or expired token" error
+```javascript
+// Clear localStorage in browser console (F12):
+localStorage.clear()
+// Then refresh page and login again
+```
+
+### Port already in use
+```bash
+# Find process using port 3000
+netstat -ano | findstr :3000
+
+# Kill process (replace PID with actual process ID)
+taskkill /PID <PID> /F
+
+# Or change port in docker-compose.yml
+```
+
+---
+
+## 📦 Technology Stack
+
+**Frontend:**
+- React 18
+- React Router 6
+- Axios
+- Tailwind CSS
+- React Icons
+
+**Backend:**
+- Go 1.21+
+- Gin Web Framework
+- GORM (ORM)
+- JWT tokens
+- OAuth2 library
+
+**Database:**
+- PostgreSQL 15
+
+**Deployment:**
+- Docker
+- Docker Compose
+
+**External APIs:**
+- Deck of Cards API
+- Trivia API (Open Trivia Database)
+
+---
+
+## 🎮 Game Rules
+
+### Phase 1: Accumulation
+- Each player gets 1 face-up card
+- Player with lowest card starts
+- **Before drawing**: Must place top card if possible (+1 rank on another player)
+- **Cannot draw** if valid placement exists
+- Draw 1 card when no placement possible
+- If drawn card fits (+1), must place it
+- Phase ends when deck is empty
+
+### Phase 2: Trick-Taking
+- **Goal**: Get rid of all cards (last player loses)
+- Player with 9♠ (nine of spades) starts
+- Must follow suit or play trump
+- Highest card wins trick
+- Winner leads next trick
+
+---
+
+## 🚀 Deployment to Production
+
+### Environment Setup
+1. Create production `.env` files
+2. Set production OAuth URLs
+3. Configure production database
+4. Enable HTTPS
+
+### Deploy Steps
+```bash
+# Build for production
+docker compose -f docker-compose.prod.yml up --build -d
+
+# Check services
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+### Recommended Setup
+- Use Nginx/Caddy as reverse proxy
+- Enable HTTPS with Let's Encrypt
+- Set up database backups
+- Configure monitoring (logs, metrics)
+- Use environment secrets management
+
+---
+
+## 📝 API Endpoints
+
+### Public (No Auth)
+- `GET /health` - Health check
+- `GET /api/v1/auth/:provider` - Get OAuth URL
+- `GET /api/v1/auth/:provider/callback` - OAuth callback
+
+### Authenticated (All Roles)
+- `GET /api/v1/auth/profile` - Get user profile
+- `GET /api/v1/games` - List games
+- `GET /api/v1/games/:id/spectate` - Watch game (spectators)
+
+### Players & Admins Only
+- `POST /api/v1/games` - Create game
+- `POST /api/v1/games/join` - Join game
+- `POST /api/v1/games/:id/start` - Start game
+- `POST /api/v1/games/:id/place` - Place card
+- `POST /api/v1/games/:id/draw` - Draw card
+- `POST /api/v1/games/:id/skip` - Skip turn
+
+### Admin Only
+- `GET /api/v1/admin/users` - List users
+- `GET /api/v1/admin/users/:id` - Get user
+- `PUT /api/v1/admin/users/:id/role` - Change role
+- `DELETE /api/v1/admin/users/:id` - Delete user
+- `GET /api/v1/admin/stats` - System stats
+
+---
+
+## 🧪 Testing
+
+### Manual Testing
+1. Create 2+ accounts (use different Google accounts or incognito)
+2. Create game with first account
+3. Join with second account
+4. Start game
+5. Test gameplay (place cards, draw)
+6. Test role features (admin panel, spectator watching)
+
+### API Testing with curl
+```bash
+# Health check
+curl http://localhost:8080/health
+
+# Get games (requires auth token)
+curl http://localhost:8080/api/v1/games \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+
+# Create game
+curl -X POST http://localhost:8080/api/v1/games \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"max_players": 4}'
+```
+
+---
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
-## 📞 Support
-
-For issues and questions:
-- Create an issue on GitHub
-- Contact: support@fasiolas.com
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
 
 ---
 
-**Happy Gaming! 🎴**
+## 📄 License
 
+MIT License - See LICENSE file for details
+
+---
+
+## 📞 Support
+
+For issues or questions:
+- Check troubleshooting section above
+- Review Docker logs: `docker compose logs`
+- Check browser console (F12)
+- Open GitHub issue
+
+---
+
+## ⚡ Quick Reference
+
+| Task | Command |
+|------|---------|
+| Start | `docker compose up` |
+| Stop | `docker compose down` |
+| Rebuild | `docker compose up --build` |
+| Fresh Start | `docker compose down -v && docker compose up` |
+| View Logs | `docker compose logs -f` |
+| Access DB | `docker compose exec db psql -U postgres -d fasiolas_game` |
+
+---
+
+**Ready to play! Start with `docker compose up` and visit http://localhost:3000** 🎮
+
+**Created**: January 27, 2026  
+**Version**: 1.0 with RBAC
