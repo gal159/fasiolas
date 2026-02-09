@@ -193,6 +193,13 @@ func (r *GamePlayerRepository) Delete(id int) error {
 	return err
 }
 
+// DeleteByUserID deletes all game player records for a user
+func (r *GamePlayerRepository) DeleteByUserID(userID uint64) error {
+	query := `DELETE FROM game_players WHERE user_id = $1`
+	_, err := r.db.Exec(query, userID)
+	return err
+}
+
 // CountByGame counts players in a game
 func (r *GamePlayerRepository) CountByGame(gameID int) (int, error) {
 	query := `SELECT COUNT(*) FROM game_players WHERE game_id = $1`

@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"time"
@@ -202,4 +203,60 @@ func (s *ExternalAPIService) GetGameStats() (*CardStats, error) {
 		AverageGameTime: 15.5,
 		PopularCard:     "AS", // Ace of Spades
 	}, nil
+}
+
+// TriviaQuestion represents a trivia question from Open Trivia DB
+type TriviaQuestion struct {
+	Category         string   `json:"category"`
+	Type             string   `json:"type"`
+	Difficulty       string   `json:"difficulty"`
+	Question         string   `json:"question"`
+	CorrectAnswer    string   `json:"correct_answer"`
+	IncorrectAnswers []string `json:"incorrect_answers"`
+}
+
+// GetTriviaQuestions fetches trivia questions from Open Trivia DB
+func (s *ExternalAPIService) GetTriviaQuestions(amount int) ([]TriviaQuestion, error) {
+	if amount <= 0 {
+		amount = 5
+	}
+	if amount > 50 {
+		amount = 50
+	}
+
+	url := fmt.Sprintf("https://opentdb.com/api.php?amount=%d&type=multiple", amount)
+
+	resp, err := s.client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch trivia: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("trivia API returned status %d", resp.StatusCode)
+	}
+
+	var payload struct {
+		ResponseCode int              `json:"response_code"`
+		Results      []TriviaQuestion `json:"results"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return nil, fmt.Errorf("failed to parse trivia response: %w", err)
+	}
+
+	if payload.ResponseCode != 0 {
+		return nil, fmt.Errorf("trivia API returned code %d", payload.ResponseCode)
+	}
+
+	// Unescape HTML entities for readability
+	for i := range payload.Results {
+		payload.Results[i].Question = html.UnescapeString(payload.Results[i].Question)
+		payload.Results[i].CorrectAnswer = html.UnescapeString(payload.Results[i].CorrectAnswer)
+		for j := range payload.Results[i].IncorrectAnswers {
+			payload.Results[i].IncorrectAnswers[j] = html.UnescapeString(payload.Results[i].IncorrectAnswers[j])
+		}
+	}
+
+	return payload.Results, nil
 }

@@ -20,7 +20,14 @@ function Game({ user }) {
 
   const fetchGameState = async () => {
     try {
-      const response = await axios.get(`/api/v1/games/${id}`);
+      let endpoint = `/api/v1/games/${id}`;
+
+      // Spectators use the spectate endpoint for read-only access
+      if (user?.role === 'spectator') {
+        endpoint = `/api/v1/games/${id}/spectate`;
+      }
+
+      const response = await axios.get(endpoint);
       setGame(response.data.game);
       setPlayers(response.data.players);
       setError(null);
@@ -78,7 +85,9 @@ function Game({ user }) {
       <div className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-3xl font-bold mb-2">Game #{game.id}</h2>
+            <h2 className="text-3xl font-bold mb-2">
+              {user?.role === 'spectator' ? '👁️ Spectating' : ''} Game #{game.id}
+            </h2>
             <div className="flex items-center space-x-4 text-gray-400">
               <span>Room: <code className="bg-gray-900 px-2 py-1 rounded">{game.room_code}</code></span>
               <button
@@ -92,6 +101,9 @@ function Game({ user }) {
           </div>
 
           <div className="text-right">
+            {user?.role === 'spectator' && (
+              <p className="text-purple-400 font-semibold mb-2">👁️ SPECTATOR MODE</p>
+            )}
             <p className="text-gray-400 mb-2">Status: <span className="text-blue-400 font-semibold">{game.state}</span></p>
             <p className="text-gray-400">Phase: <span className="text-blue-400 font-semibold">{game.phase}</span></p>
           </div>
@@ -129,10 +141,14 @@ function Game({ user }) {
           <div className="mt-12 mb-8 flex flex-col items-center">
             <button
               onClick={handleStartGame}
-              disabled={players.length < 2}
+              disabled={players.length < 2 || user?.role === 'spectator'}
               className="w-full max-w-md bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:opacity-75 disabled:cursor-not-allowed px-8 py-6 rounded-xl font-bold text-2xl transition-all transform hover:scale-105 shadow-2xl border-2 border-green-500"
             >
-              {players.length < 2 ? '⏳ Need 2+ players' : '🎮 START GAME 🎮'}
+              {user?.role === 'spectator'
+                ? '👁️ SPECTATOR MODE'
+                : players.length < 2
+                  ? '⏳ Need 2+ players'
+                  : '🎮 START GAME 🎮'}
             </button>
             <p className="text-gray-400 text-sm mt-4">
               {user ? `✓ Logged in as: ${user.username}` : '✗ Not logged in'}

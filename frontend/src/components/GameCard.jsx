@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowRight, FiCopy } from 'react-icons/fi';
+import { FiArrowRight, FiCopy, FiEye } from 'react-icons/fi';
 
-function GameCard({ game, onRefresh }) {
+function GameCard({ game, onRefresh, userRole = 'player' }) {
   const navigate = useNavigate();
   const [joining, setJoining] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -23,6 +23,18 @@ function GameCard({ game, onRefresh }) {
     }
   };
 
+  const handleWatchGame = async () => {
+    try {
+      setJoining(true);
+      // Spectators don't join, they just navigate to view
+      navigate(`/game/${game.id}`);
+    } catch (err) {
+      alert('Failed to watch game: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setJoining(false);
+    }
+  };
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(game.room_code);
     setCopied(true);
@@ -31,6 +43,7 @@ function GameCard({ game, onRefresh }) {
 
   const currentPlayers = game.player_count ?? game.players?.length ?? '?';
   const isFull = currentPlayers !== '?' && currentPlayers >= game.max_players;
+  const isSpectator = userRole === 'spectator';
 
   return (
     <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 hover:border-blue-500 transition">
@@ -62,14 +75,25 @@ function GameCard({ game, onRefresh }) {
           <span>{copied ? 'Copied' : 'Copy Code'}</span>
         </button>
 
-        <button
-          onClick={handleJoinGame}
-          disabled={joining || isFull}
-          className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-2 rounded text-sm font-medium transition"
-        >
-          <span>{isFull ? 'Full' : joining ? 'Joining...' : 'Join'}</span>
-          <FiArrowRight className="w-4 h-4" />
-        </button>
+        {isSpectator ? (
+          <button
+            onClick={handleWatchGame}
+            disabled={joining}
+            className="flex-1 flex items-center justify-center space-x-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 px-3 py-2 rounded text-sm font-medium transition"
+          >
+            <FiEye className="w-4 h-4" />
+            <span>{joining ? 'Loading...' : 'Watch'}</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleJoinGame}
+            disabled={joining || isFull}
+            className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 px-3 py-2 rounded text-sm font-medium transition"
+          >
+            <span>{isFull ? 'Full' : joining ? 'Joining...' : 'Join'}</span>
+            <FiArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </div>
   );

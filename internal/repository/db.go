@@ -9,12 +9,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// DB holds the database connection
 type DB struct {
 	*sql.DB
 }
 
-// NewDB creates a new database connection with retry logic
 func NewDB(cfg *config.DatabaseConfig) (*DB, error) {
 	connStr := cfg.ConnectionString()
 
@@ -23,7 +21,6 @@ func NewDB(cfg *config.DatabaseConfig) (*DB, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	// Retry logic to wait for database to be ready
 	maxRetries := 30
 	retryDelay := time.Second
 
@@ -44,14 +41,12 @@ func NewDB(cfg *config.DatabaseConfig) (*DB, error) {
 		return nil, fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
 	}
 
-	// Set connection pool settings
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 
 	return &DB{db}, nil
 }
 
-// Close closes the database connection
 func (db *DB) Close() error {
 	return db.DB.Close()
 }

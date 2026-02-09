@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Game from './pages/Game';
+import AdminPanel from './pages/AdminPanel';
+import TriviaDashboard from './pages/TriviaDashboard';
 import Navigation from './components/Navigation';
 import './App.css';
 
@@ -79,8 +81,16 @@ function App() {
             element={user ? <Dashboard user={user} /> : <Navigate to="/login" />}
           />
           <Route
+            path="/admin"
+            element={user ? <AdminPanel /> : <Navigate to="/login" />}
+          />
+          <Route
             path="/game/:id"
             element={user ? <Game user={user} /> : <Navigate to="/login" />}
+          />
+          <Route
+            path="/trivia"
+            element={user ? <TriviaDashboard /> : <Navigate to="/login" />}
           />
           <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
         </Routes>
@@ -90,4 +100,3 @@ function App() {
 }
 
 export default App;
-

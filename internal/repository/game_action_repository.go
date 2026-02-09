@@ -18,7 +18,7 @@ func NewGameActionRepository(db *DB) *GameActionRepository {
 // Create creates a new game action
 func (r *GameActionRepository) Create(action *models.GameAction) error {
 	query := `
-		INSERT INTO game_actions (game_id, player_id, action_type, action_data, phase)
+		INSERT INTO game_actions (game_id, user_id, action_type, action_data, phase)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, timestamp
 	`
@@ -41,7 +41,7 @@ func (r *GameActionRepository) Create(action *models.GameAction) error {
 // GetByGame retrieves all actions for a game
 func (r *GameActionRepository) GetByGame(gameID int, limit int) ([]models.GameAction, error) {
 	query := `
-		SELECT id, game_id, player_id, action_type, action_data, phase, timestamp
+		SELECT id, game_id, user_id, action_type, action_data, phase, timestamp
 		FROM game_actions
 		WHERE game_id = $1
 		ORDER BY timestamp DESC
@@ -85,9 +85,9 @@ func (r *GameActionRepository) GetByGame(gameID int, limit int) ([]models.GameAc
 // GetByUser retrieves all actions by a user
 func (r *GameActionRepository) GetByUser(userID int, limit int) ([]models.GameAction, error) {
 	query := `
-		SELECT id, game_id, player_id, action_type, action_data, phase, timestamp
+		SELECT id, game_id, user_id, action_type, action_data, phase, timestamp
 		FROM game_actions
-		WHERE player_id = $1
+		WHERE user_id = $1
 		ORDER BY timestamp DESC
 		LIMIT $2
 	`

@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS game_players (
     user_id INTEGER NOT NULL,
     position INTEGER NOT NULL,
     cards JSONB DEFAULT '[]',
-    top_card VARCHAR(10),
+    top_card JSONB,
     card_count INTEGER DEFAULT 0,
     status VARCHAR(50) DEFAULT 'waiting',
     can_call_cheat BOOLEAN DEFAULT TRUE,
@@ -102,19 +102,23 @@ echo "  [4/4] Creating game_actions table..."
 PGPASSWORD=123456 psql -h postgres -U postgres -d fasiolas_game << 'EOF'
 CREATE TABLE IF NOT EXISTS game_actions (
     id SERIAL PRIMARY KEY,
-    game_id INTEGER NOT NULL,
-    player_id INTEGER NOT NULL,
+    game_id INTEGER NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     action_type VARCHAR(50) NOT NULL,
-    card_placed VARCHAR(10),
-    target_player_position INTEGER,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_game_actions_game FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
-    CONSTRAINT fk_game_actions_player FOREIGN KEY (player_id) REFERENCES users(id) ON DELETE CASCADE
+    action_data JSONB,
+    phase INTEGER,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_action_type CHECK (action_type IN (
+        'join', 'leave', 'start_game', 'draw_card', 'place_card',
+        'call_cheat', 'receive_penalty', 'phase_change',
+        'take_table_card', 'skip_turn', 'win', 'lose'
+    ))
 );
 
-CREATE INDEX IF NOT EXISTS idx_game_actions_game_id ON game_actions(game_id);
-CREATE INDEX IF NOT EXISTS idx_game_actions_player_id ON game_actions(player_id);
-CREATE INDEX IF NOT EXISTS idx_game_actions_created_at ON game_actions(created_at);
+CREATE INDEX IF NOT EXISTS idx_game_actions_game ON game_actions(game_id);
+CREATE INDEX IF NOT EXISTS idx_game_actions_user ON game_actions(user_id);
+CREATE INDEX IF NOT EXISTS idx_game_actions_timestamp ON game_actions(timestamp);
+CREATE INDEX IF NOT EXISTS idx_game_actions_type ON game_actions(action_type);
 EOF
 
 echo "✓ All migrations applied successfully"

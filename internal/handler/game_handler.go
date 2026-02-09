@@ -134,14 +134,48 @@ func (h *GameHandler) GetGameState(c *gin.Context) {
 		return
 	}
 
-	state, err := h.gameService.GetGameState(gameID, userID)
+	// Get user role
+	userRole, _ := middleware.GetUserRole(c)
+
+	state, err := h.gameService.GetGameState(gameID, userID, userRole)
 	if err != nil {
 		fmt.Printf("[Game] ❌ GetGameState failed for game %d, user %d: %v\n", gameID, userID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	fmt.Printf("[Game] ✅ GetGameState success for game %d: %d players\n", gameID, len(state.Players))
+	fmt.Printf("[Game] ✅ GetGameState success for game %d: %d players (role: %s)\n", gameID, len(state.Players), userRole)
+	c.JSON(http.StatusOK, state)
+}
+
+// GetGameStateSpectator godoc
+// @Summary Get game state as spectator (view-only)
+// @Tags games
+// @Security BearerAuth
+// @Param id path int true "Game ID"
+// @Success 200 {object} models.GameStateResponse
+// @Router /api/v1/games/{id}/spectate [get]
+func (h *GameHandler) GetGameStateSpectator(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	gameID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+		return
+	}
+
+	state, err := h.gameService.GetGameStateForSpectator(gameID)
+	if err != nil {
+		fmt.Printf("[Game] ❌ GetGameStateSpectator failed for game %d, user %d: %v\n", gameID, userID, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	fmt.Printf("[Game] ✅ GetGameStateSpectator success for game %d (viewer: %d)\n", gameID, userID)
 	c.JSON(http.StatusOK, state)
 }
 
@@ -250,6 +284,34 @@ func (h *GameHandler) CallCheat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "cheat called"})
 }
 
+// SkipTurn godoc
+// @Summary Skip turn
+// @Tags games
+// @Security BearerAuth
+// @Param id path int true "Game ID"
+// @Success 200 {object} map[string]interface{}
+// @Router /api/v1/games/{id}/skip [post]
+func (h *GameHandler) SkipTurn(c *gin.Context) {
+	userID, exists := middleware.GetUserID(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	gameID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid game ID"})
+		return
+	}
+
+	if err := h.gameService.SkipTurn(gameID, userID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "turn skipped"})
+}
+
 // ListGames godoc
 // @Summary List games
 // @Tags games
@@ -318,4 +380,21 @@ func (h *GameHandler) GetGameStats(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, stats)
+}
+
+// GetTriviaQuestions godoc
+// @Summary Get trivia questions (external API)
+// @Tags external
+// @Param amount query int false "Number of questions" default(5)
+// @Success 200 {array} service.TriviaQuestion
+// @Router /api/v1/external/trivia [get]
+func (h *GameHandler) GetTriviaQuestions(c *gin.Context) {
+	amount, _ := strconv.Atoi(c.DefaultQuery("amount", "5"))
+	questions, err := h.extService.GetTriviaQuestions(amount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, questions)
 }
